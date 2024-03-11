@@ -194,6 +194,7 @@ UPROGS=\
 	$U/_find\
 	$U/_xargs\
 	$U/_test\
+	$U/_uptime\
 
 
 
