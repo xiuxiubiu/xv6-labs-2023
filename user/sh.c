@@ -3,6 +3,7 @@
 #include "../kernel/types.h"
 #include "user.h"
 #include "../kernel/fcntl.h"
+#include "../kernel/stat.h"
 
 // Parsed command representation
 #define EXEC  1
@@ -53,6 +54,8 @@ int fork1(void);  // Fork but panics on failure.
 void panic(char*);
 struct cmd *parsecmd(char*);
 void runcmd(struct cmd*) __attribute__((noreturn));
+
+int fcmd = 1;
 
 // Execute cmd.  Never returns.
 void
@@ -131,11 +134,18 @@ runcmd(struct cmd *cmd)
   exit(0);
 }
 
+// read command string 
+// print $
 int
-getcmd(char *buf, int nbuf)
+getcmd(char *buf, int nbuf, int pcmd)
 {
-  write(2, "$ ", 2);
+  if (pcmd)
+    write(2, "$ ", 2);
+
+  // init buf with 0
   memset(buf, 0, nbuf);
+
+  // get string
   gets(buf, nbuf);
   if(buf[0] == 0) // EOF
     return -1;
@@ -146,18 +156,25 @@ int
 main(void)
 {
   static char buf[100];
-  int fd;
+  int fd, pcmd;
+  struct stat zst, cst;
 
   // Ensure that three file descriptors are open.
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
+      fstat(fd, &cst);
       close(fd);
       break;
     }
   }
 
+  pcmd = 0;
+  fstat(0, &zst);
+  if (zst.ino == cst.ino)
+    pcmd = 1;
+
   // Read and run input commands.
-  while(getcmd(buf, sizeof(buf)) >= 0){
+  while(getcmd(buf, sizeof(buf), pcmd) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
       // Chdir must be called by the parent, not the child.
       buf[strlen(buf)-1] = 0;  // chop \n
@@ -165,8 +182,10 @@ main(void)
         fprintf(2, "cannot cd %s\n", buf+3);
       continue;
     }
-    if(fork1() == 0)
+
+    if(fork1() == 0) { 
       runcmd(parsecmd(buf));
+    }
     wait(0);
   }
   exit(0);
@@ -179,6 +198,7 @@ panic(char *s)
   exit(1);
 }
 
+// fork child process
 int
 fork1(void)
 {
@@ -193,6 +213,7 @@ fork1(void)
 //PAGEBREAK!
 // Constructors
 
+// generate exec cmd
 struct cmd*
 execcmd(void)
 {
@@ -204,6 +225,7 @@ execcmd(void)
   return (struct cmd*)cmd;
 }
 
+// generate redircmd
 struct cmd*
 redircmd(struct cmd *subcmd, char *file, char *efile, int mode, int fd)
 {
@@ -328,6 +350,7 @@ struct cmd *nulterminate(struct cmd*);
 struct cmd*
 parsecmd(char *s)
 {
+  // end string pointer
   char *es;
   struct cmd *cmd;
 
@@ -372,6 +395,10 @@ parsepipe(char **ps, char *es)
   return cmd;
 }
 
+// parse redir cmd 
+// <> or >>
+// if are not redir cmd
+// return previous cmd
 struct cmd*
 parseredirs(struct cmd *cmd, char **ps, char *es)
 {
@@ -379,7 +406,10 @@ parseredirs(struct cmd *cmd, char **ps, char *es)
   char *q, *eq;
 
   while(peek(ps, es, "<>")){
+    // get < or > or +
     tok = gettoken(ps, es, 0, 0);
+
+    // get next argumnet
     if(gettoken(ps, es, &q, &eq) != 'a')
       panic("missing file for redirection");
     switch(tok){
@@ -413,6 +443,8 @@ parseblock(char **ps, char *es)
   return cmd;
 }
 
+// parse exec
+//
 struct cmd*
 parseexec(char **ps, char *es)
 {
@@ -432,6 +464,9 @@ parseexec(char **ps, char *es)
   while(!peek(ps, es, "|)&;")){
     if((tok=gettoken(ps, es, &q, &eq)) == 0)
       break;
+
+    // not ><|;&
+    // ie: ls sh console find grep ...
     if(tok != 'a')
       panic("syntax");
     cmd->argv[argc] = q;

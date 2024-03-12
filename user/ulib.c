@@ -54,6 +54,8 @@ memset(void *dst, int c, uint n)
   return dst;
 }
 
+// whthere the string s contains character c
+// return char or 0
 char*
 strchr(const char *s, char c)
 {
