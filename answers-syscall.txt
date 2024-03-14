@@ -1,0 +1,6 @@
+usertrap at kernel/trap.c:67
+7 SYS_exec
+supervisor mode
+lw	a3,0(zero)      a3
+
+initcode 1
