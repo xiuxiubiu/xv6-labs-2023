@@ -688,3 +688,18 @@ procdump(void)
     printf("\n");
   }
 }
+
+int
+nproc(void)
+{
+  int i, n;
+  struct proc *p;
+
+  n = 0;
+  p = proc;
+  for (i = 0; i < NPROC; i++, p++)
+    if (p->state != UNUSED) 
+      n++;
+
+  return n;
+}
