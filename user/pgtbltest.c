@@ -1,8 +1,8 @@
-#include "kernel/param.h"
-#include "kernel/fcntl.h"
-#include "kernel/types.h"
-#include "kernel/riscv.h"
-#include "user/user.h"
+#include "../kernel/param.h"
+#include "../kernel/fcntl.h"
+#include "../kernel/types.h"
+#include "../kernel/riscv.h"
+#include "user.h"
 
 void ugetpid_test();
 void pgaccess_test();
