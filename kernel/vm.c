@@ -449,3 +449,38 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+// Print the pagetable in the format described below.
+// page table 0x0000000087f6b000
+// ..0: pte 0x0000000021fd9c01 pa 0x0000000087f67000
+// .. ..0: pte 0x0000000021fd9801 pa 0x0000000087f66000
+// .. .. ..0: pte 0x0000000021fda01b pa 0x0000000087f68000
+// .. .. ..1: pte 0x0000000021fd9417 pa 0x0000000087f65000
+// .. .. ..2: pte 0x0000000021fd9007 pa 0x0000000087f64000
+// .. .. ..3: pte 0x0000000021fd8c17 pa 0x0000000087f63000
+// ..255: pte 0x0000000021fda801 pa 0x0000000087f6a000
+// .. ..511: pte 0x0000000021fda401 pa 0x0000000087f69000
+// .. .. ..509: pte 0x0000000021fdcc13 pa 0x0000000087f73000
+// .. .. ..510: pte 0x0000000021fdd007 pa 0x0000000087f74000
+// .. .. ..511: pte 0x0000000020001c0b pa 0x0000000080007000
+void print_pagetable(pagetable_t pagetable, int level) {
+  for (int i = 0; i < 512; i++) {
+    pte_t pte = pagetable[i];
+
+    if ((pte & PTE_V) == 0)
+      continue;      
+
+    for (int n = 1; n < level; n++)
+      printf(".. ");
+
+    printf("..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+
+    if (level < 3)
+      print_pagetable((pagetable_t)PTE2PA(pte), level + 1);
+  }
+}
+
+void vmprint(pagetable_t pagetable) {
+  printf("page table %p\n", pagetable);
+  print_pagetable(pagetable, 1);
+}
