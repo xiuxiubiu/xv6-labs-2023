@@ -70,14 +70,41 @@ sys_sleep(void)
 }
 
 
-#ifdef LAB_PGTBL
+// #ifdef LAB_PGTBL
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  uint64 base, abits, mask;
+  int len;
+  pagetable_t pagetable;
+  pte_t *pte;
+
+  argaddr(0, &base); 
+  argint(1, &len);
+  argaddr(2, &abits);
+
+  pagetable = myproc()->pagetable;
+
+  mask = 0;
+  for (int i = 0; i < len - 1; i++) {
+
+    pte = walk(pagetable, base + (i * PGSIZE), 0); 
+    if (pte == 0)
+      return -1;
+
+    if ((*pte &PTE_V) && (*pte & PTE_A)) {
+      printf("vaild: %p\n", *pte);
+      *pte &= (~PTE_A);
+      mask |= (1L << i);
+    }
+  } 
+
+  if (copyout(pagetable, abits, (char *)&mask, sizeof(mask)) < 0)
+    return -1;
+  
   return 0;
 }
-#endif
+// #endif
 
 uint64
 sys_kill(void)
